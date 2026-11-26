@@ -1,0 +1,31 @@
+defmodule TodoWeb.Router do
+  use TodoWeb, :router
+
+  pipeline :browser do
+    plug :accepts, ["html"]
+    plug :fetch_session
+    plug :fetch_live_flash
+    plug :put_root_layout, html: {TodoWeb.Layouts, :root}
+    plug :protect_from_forgery
+    plug :put_secure_browser_headers
+  end
+
+  pipeline :api do
+    plug :accepts, ["json"]
+  end
+
+  scope "/", TodoWeb do
+    pipe_through :browser
+
+    live "/", TaskLive.Index, :index
+    live "/tasks", TaskLive.Index, :index
+    live "/tasks/new", TaskLive.Form, :new
+    live "/tasks/:id", TaskLive.Show, :show
+    live "/tasks/:id/edit", TaskLive.Form, :edit
+  end
+
+  # Other scopes may use custom stacks.
+  # scope "/api", TodoWeb do
+  #   pipe_through :api
+  # end
+end
