@@ -16,6 +16,7 @@ defmodule TodoWeb.TaskLive.Form do
       <.form for={@form} id="task-form" phx-change="validate" phx-submit="save">
         <.input field={@form[:title]} type="text" label="Title" />
         <.input field={@form[:completed]} type="checkbox" label="Completed" />
+        <.input field={@form[:due_date]} type="date" label="Due date" />
         <footer>
           <.button phx-disable-with="Saving..." variant="primary">Save Task</.button>
           <.button navigate={return_path(@return_to, @task)}>Cancel</.button>

@@ -28,6 +28,18 @@ defmodule Todo.TasksTest do
       assert task.completed == true
     end
 
+    test "create_task/1 with a due date stores it" do
+      assert {:ok, %Task{} = task} =
+               Tasks.create_task(%{title: "dated", due_date: ~D[2026-12-01]})
+
+      assert task.due_date == ~D[2026-12-01]
+      assert Tasks.get_task!(task.id).due_date == ~D[2026-12-01]
+    end
+
+    test "create_task/1 without a due date leaves it nil" do
+      assert {:ok, %Task{due_date: nil}} = Tasks.create_task(%{title: "undated"})
+    end
+
     test "create_task/1 with invalid data returns error changeset" do
       assert {:error, %Ecto.Changeset{}} = Tasks.create_task(@invalid_attrs)
     end
@@ -39,6 +51,20 @@ defmodule Todo.TasksTest do
       assert {:ok, %Task{} = task} = Tasks.update_task(task, update_attrs)
       assert task.title == "some updated title"
       assert task.completed == false
+    end
+
+    test "update_task/2 sets and clears the due date" do
+      task = task_fixture()
+
+      assert {:ok, %Task{due_date: ~D[2026-12-24]} = task} =
+               Tasks.update_task(task, %{due_date: ~D[2026-12-24]})
+
+      assert {:ok, %Task{due_date: nil}} = Tasks.update_task(task, %{due_date: nil})
+    end
+
+    test "update_task/2 with an invalid due date returns error changeset" do
+      task = task_fixture()
+      assert {:error, %Ecto.Changeset{}} = Tasks.update_task(task, %{due_date: "not a date"})
     end
 
     test "update_task/2 with invalid data returns error changeset" do

@@ -26,6 +26,9 @@ defmodule TodoWeb.TaskLive.Index do
         </:col>
         <:col :let={{_id, task}} label="Title">{task.title}</:col>
         <:col :let={{_id, task}} label="Completed">{task.completed}</:col>
+        <:col :let={{id, task}} label="Due date">
+          <span id={"#{id}-due-date"}>{task.due_date || "No date"}</span>
+        </:col>
         <:action :let={{_id, task}}>
           <div class="sr-only">
             <.link navigate={~p"/tasks/#{task}"}>Show</.link>
