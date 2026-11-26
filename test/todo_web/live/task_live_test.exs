@@ -75,6 +75,38 @@ defmodule TodoWeb.TaskLiveTest do
       assert html =~ "some updated title"
     end
 
+    test "groups tasks into sections", %{conn: conn, task: undated} do
+      today = Date.utc_today()
+      overdue = task_fixture(%{title: "late", completed: false, due_date: Date.add(today, -3)})
+      done = task_fixture(%{title: "done", completed: true, due_date: today})
+      week = Date.beginning_of_week(today, :monday)
+
+      {:ok, view, _html} = live(conn, ~p"/tasks")
+
+      assert has_element?(view, "#overdue #tasks-#{overdue.id}")
+      assert has_element?(view, "#no-date #tasks-#{undated.id}")
+      assert has_element?(view, "#week-#{week} #week-#{week}-day-#{today} #tasks-#{done.id}")
+      assert has_element?(view, "#tasks-#{done.id} a.line-through")
+      refute has_element?(view, "#overdue #tasks-#{done.id}")
+    end
+
+    test "toggling moves a task between sections", %{conn: conn} do
+      today = Date.utc_today()
+      late = task_fixture(%{completed: false, due_date: Date.add(today, -2)})
+      {:ok, view, _html} = live(conn, ~p"/tasks")
+      assert has_element?(view, "#overdue #tasks-#{late.id}")
+
+      view |> element("#toggle-#{late.id}") |> render_click()
+      refute has_element?(view, "#overdue")
+      assert has_element?(view, "#tasks-#{late.id} a.line-through")
+    end
+
+    test "shows empty state without tasks", %{conn: conn, task: task} do
+      Todo.Tasks.delete_task(task)
+      {:ok, view, _html} = live(conn, ~p"/tasks")
+      assert has_element?(view, "#tasks-empty")
+    end
+
     test "deletes task in listing", %{conn: conn, task: task} do
       {:ok, index_live, _html} = live(conn, ~p"/tasks")
 
