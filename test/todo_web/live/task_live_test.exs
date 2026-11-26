@@ -4,8 +4,8 @@ defmodule TodoWeb.TaskLiveTest do
   import Phoenix.LiveViewTest
   import Todo.TasksFixtures
 
-  @create_attrs %{title: "some title", completed: true}
-  @update_attrs %{title: "some updated title", completed: false}
+  @create_attrs %{title: "some title", completed: true, due_date: "2026-12-01"}
+  @update_attrs %{title: "some updated title", completed: false, due_date: "2026-12-24"}
   @invalid_attrs %{title: nil, completed: false}
   defp create_task(_) do
     task = task_fixture()
@@ -47,6 +47,22 @@ defmodule TodoWeb.TaskLiveTest do
       html = render(index_live)
       assert html =~ "Task created successfully"
       assert html =~ "some title"
+      task = Todo.Repo.get_by!(Todo.Tasks.Task, due_date: ~D[2026-12-01])
+      assert has_element?(index_live, "#tasks-#{task.id}-due-date", "2026-12-01")
+    end
+
+    test "saves new task without a due date", %{conn: conn} do
+      {:ok, form_live, _html} = live(conn, ~p"/tasks/new")
+
+      assert {:ok, index_live, _html} =
+               form_live
+               |> form("#task-form", task: %{title: "undated task", due_date: ""})
+               |> render_submit()
+               |> follow_redirect(conn, ~p"/tasks")
+
+      task = Todo.Repo.get_by!(Todo.Tasks.Task, title: "undated task")
+      assert task.due_date == nil
+      assert has_element?(index_live, "#tasks-#{task.id}-due-date", "No date")
     end
 
     test "updates task in listing", %{conn: conn, task: task} do
@@ -73,6 +89,7 @@ defmodule TodoWeb.TaskLiveTest do
       html = render(index_live)
       assert html =~ "Task updated successfully"
       assert html =~ "some updated title"
+      assert has_element?(index_live, "#tasks-#{task.id}-due-date", "2026-12-24")
     end
 
     test "deletes task in listing", %{conn: conn, task: task} do
@@ -87,10 +104,17 @@ defmodule TodoWeb.TaskLiveTest do
     setup [:create_task]
 
     test "displays task", %{conn: conn, task: task} do
-      {:ok, _show_live, html} = live(conn, ~p"/tasks/#{task}")
+      {:ok, show_live, html} = live(conn, ~p"/tasks/#{task}")
 
       assert html =~ "Show Task"
       assert html =~ task.title
+      assert has_element?(show_live, "#task-due-date", "No date")
+    end
+
+    test "displays due date", %{conn: conn} do
+      task = task_fixture(%{due_date: ~D[2026-12-01]})
+      {:ok, show_live, _html} = live(conn, ~p"/tasks/#{task}")
+      assert has_element?(show_live, "#task-due-date", "2026-12-01")
     end
 
     test "updates task and returns to show", %{conn: conn, task: task} do
@@ -117,6 +141,7 @@ defmodule TodoWeb.TaskLiveTest do
       html = render(show_live)
       assert html =~ "Task updated successfully"
       assert html =~ "some updated title"
+      assert has_element?(show_live, "#task-due-date", "2026-12-24")
     end
   end
 end

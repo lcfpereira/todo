@@ -23,6 +23,9 @@ defmodule TodoWeb.TaskLive.Show do
       <.list>
         <:item title="Title">{@task.title}</:item>
         <:item title="Completed">{@task.completed}</:item>
+        <:item title="Due date">
+          <span id="task-due-date">{@task.due_date || "No date"}</span>
+        </:item>
       </.list>
     </Layouts.app>
     """
