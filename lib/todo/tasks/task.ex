@@ -5,6 +5,7 @@ defmodule Todo.Tasks.Task do
   schema "tasks" do
     field :title, :string
     field :completed, :boolean, default: false
+    field :due_date, :date
 
     timestamps(type: :utc_datetime)
   end
@@ -12,7 +13,7 @@ defmodule Todo.Tasks.Task do
   @doc false
   def changeset(task, attrs) do
     task
-    |> cast(attrs, [:title, :completed])
+    |> cast(attrs, [:title, :completed, :due_date])
     |> validate_required([:title, :completed])
   end
 end
