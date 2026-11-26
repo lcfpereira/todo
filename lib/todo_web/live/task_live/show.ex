@@ -23,6 +23,9 @@ defmodule TodoWeb.TaskLive.Show do
       <.list>
         <:item title="Title">{@task.title}</:item>
         <:item title="Completed">{@task.completed}</:item>
+        <:item title="Labels">
+          <TodoWeb.LabelComponents.label_badges id="task-labels" labels={@task.labels} />
+        </:item>
       </.list>
     </Layouts.app>
     """

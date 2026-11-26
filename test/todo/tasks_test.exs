@@ -12,12 +12,12 @@ defmodule Todo.TasksTest do
 
     test "list_tasks/0 returns all tasks" do
       task = task_fixture()
-      assert Tasks.list_tasks() == [task]
+      assert Tasks.list_tasks() == [Todo.Repo.preload(task, :labels)]
     end
 
     test "get_task!/1 returns the task with given id" do
       task = task_fixture()
-      assert Tasks.get_task!(task.id) == task
+      assert Tasks.get_task!(task.id) == Todo.Repo.preload(task, :labels)
     end
 
     test "create_task/1 with valid data creates a task" do

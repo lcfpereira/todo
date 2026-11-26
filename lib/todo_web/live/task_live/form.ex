@@ -16,6 +16,27 @@ defmodule TodoWeb.TaskLive.Form do
       <.form for={@form} id="task-form" phx-change="validate" phx-submit="save">
         <.input field={@form[:title]} type="text" label="Title" />
         <.input field={@form[:completed]} type="checkbox" label="Completed" />
+        <fieldset id="label-picker" class="mb-2">
+          <legend class="label mb-1">Labels</legend>
+          <input type="hidden" name="task[label_ids][]" value="" />
+          <label :for={label <- @labels} class="mr-4 inline-flex items-center gap-1">
+            <input
+              type="checkbox"
+              id={"task_label_#{label.id}"}
+              name="task[label_ids][]"
+              value={label.id}
+              checked={label.id in @selected_label_ids}
+              class="checkbox checkbox-sm"
+            />
+            {label.name}
+          </label>
+        </fieldset>
+        <.input
+          field={@form[:new_labels]}
+          type="text"
+          label="New labels (comma-separated)"
+          value={@new_labels}
+        />
         <footer>
           <.button phx-disable-with="Saving..." variant="primary">Save Task</.button>
           <.button navigate={return_path(@return_to, @task)}>Cancel</.button>
@@ -42,25 +63,50 @@ defmodule TodoWeb.TaskLive.Form do
     socket
     |> assign(:page_title, "Edit Task")
     |> assign(:task, task)
+    |> assign_labels(task)
     |> assign(:form, to_form(Tasks.change_task(task)))
   end
 
   defp apply_action(socket, :new, _params) do
-    task = %Task{}
+    task = %Task{labels: []}
 
     socket
     |> assign(:page_title, "New Task")
     |> assign(:task, task)
+    |> assign_labels(task)
     |> assign(:form, to_form(Tasks.change_task(task)))
+  end
+
+  defp assign_labels(socket, task) do
+    socket
+    |> assign(:labels, Todo.Labels.list_labels())
+    |> assign(:selected_label_ids, Enum.map(Map.get(task, :labels, []), & &1.id))
+    |> assign(:new_labels, "")
+  end
+
+  # Keep the label picker in sync with what the user has typed/checked so far.
+  defp track_labels(socket, params) do
+    ids =
+      params
+      |> Map.get("label_ids", [])
+      |> Enum.reject(&(&1 == ""))
+      |> Enum.map(&String.to_integer/1)
+
+    socket
+    |> assign(:selected_label_ids, ids)
+    |> assign(:new_labels, Map.get(params, "new_labels", ""))
   end
 
   @impl true
   def handle_event("validate", %{"task" => task_params}, socket) do
     changeset = Tasks.change_task(socket.assigns.task, task_params)
-    {:noreply, assign(socket, form: to_form(changeset, action: :validate))}
+
+    {:noreply,
+     socket |> track_labels(task_params) |> assign(form: to_form(changeset, action: :validate))}
   end
 
   def handle_event("save", %{"task" => task_params}, socket) do
+    socket = track_labels(socket, task_params)
     save_task(socket, socket.assigns.live_action, task_params)
   end
 
