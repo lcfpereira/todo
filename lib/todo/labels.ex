@@ -67,23 +67,51 @@ defmodule Todo.Labels do
   Returns `{:ok, labels}` or `{:error, message}`.
   """
   def resolve_labels(attrs) do
-    ids = attrs |> Map.get("label_ids", []) |> List.wrap() |> Enum.reject(&(&1 in ["", nil]))
+    ids = attrs |> Map.get("label_ids", []) |> List.wrap() |> parse_ids()
     existing = Repo.all(from l in Label, where: l.id in ^ids)
 
     result =
-      attrs
-      |> Map.get("new_labels")
-      |> parse_names()
-      |> Enum.reduce_while({:ok, []}, fn name, {:ok, acc} ->
-        case get_or_create_label(name) do
-          {:ok, label} -> {:cont, {:ok, [label | acc]}}
-          {:error, cs} -> {:halt, {:error, error_message(name, cs)}}
-        end
-      end)
+      if length(existing) == length(ids) do
+        create_from_names(Map.get(attrs, "new_labels"))
+      else
+        {:error, "Some selected labels no longer exist, please review the selection"}
+      end
 
     with {:ok, created} <- result do
       {:ok, Enum.uniq_by(existing ++ created, & &1.id)}
     end
+  end
+
+  @doc """
+  Parses submitted ids, dropping blanks and anything that is not an integer.
+  """
+  def parse_ids(ids) do
+    ids
+    |> Enum.flat_map(fn
+      id when is_integer(id) ->
+        [id]
+
+      id when is_binary(id) ->
+        case Integer.parse(id) do
+          {int, ""} -> [int]
+          _ -> []
+        end
+
+      _ ->
+        []
+    end)
+    |> Enum.uniq()
+  end
+
+  defp create_from_names(names) do
+    names
+    |> parse_names()
+    |> Enum.reduce_while({:ok, []}, fn name, {:ok, acc} ->
+      case get_or_create_label(name) do
+        {:ok, label} -> {:cont, {:ok, [label | acc]}}
+        {:error, cs} -> {:halt, {:error, error_message(name, cs)}}
+      end
+    end)
   end
 
   defp error_message(name, %Ecto.Changeset{} = changeset) do

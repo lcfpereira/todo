@@ -3,7 +3,6 @@ defmodule Todo.LabelsTest do
 
   alias Todo.{Labels, Repo, Tasks}
   alias Todo.Labels.Label
-  import Todo.TasksFixtures
 
   test "name is trimmed, required and max 30 chars" do
     assert {:ok, %Label{name: "work"}} = Labels.create_label(%{name: "  work  "})
@@ -52,10 +51,19 @@ defmodule Todo.LabelsTest do
       Tasks.update_task(task, %{"label_ids" => [to_string(keep.id)], "new_labels" => ""})
 
     assert [%{name: "a"}] = updated.labels
+    assert %Label{} = Labels.get_label_by_name("b")
 
     # updates without label params leave labels untouched
     {:ok, updated} = Tasks.update_task(updated, %{completed: true})
     assert [%{name: "a"}] = updated.labels
+  end
+
+  test "malformed or missing label ids return an error instead of raising" do
+    {:ok, task} = Tasks.create_task(%{"title" => "t"})
+    assert {:ok, %{labels: []}} = Tasks.update_task(task, %{"label_ids" => ["x", ""]})
+
+    assert {:error, cs} = Tasks.update_task(task, %{"label_ids" => ["999999"]})
+    assert %{new_labels: [_]} = errors_on(cs)
   end
 
   test "an invalid task does not leave new labels behind" do
@@ -83,6 +91,5 @@ defmodule Todo.LabelsTest do
     {:ok, _} = Tasks.delete_task(task)
     assert [%Label{name: "stay"}] = Labels.list_labels()
     assert Repo.aggregate("task_labels", :count) == 0
-    _ = task_fixture()
   end
 end

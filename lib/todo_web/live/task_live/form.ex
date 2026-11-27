@@ -16,6 +16,7 @@ defmodule TodoWeb.TaskLive.Form do
       <.form for={@form} id="task-form" phx-change="validate" phx-submit="save">
         <.input field={@form[:title]} type="text" label="Title" />
         <.input field={@form[:completed]} type="checkbox" label="Completed" />
+        <%!-- Raw checkboxes on purpose: <.input type="checkbox"> only supports a single boolean value. --%>
         <fieldset id="label-picker" class="mb-2">
           <legend class="label mb-1">Labels</legend>
           <input type="hidden" name="task[label_ids][]" value="" />
@@ -86,11 +87,7 @@ defmodule TodoWeb.TaskLive.Form do
 
   # Keep the label picker in sync with what the user has typed/checked so far.
   defp track_labels(socket, params) do
-    ids =
-      params
-      |> Map.get("label_ids", [])
-      |> Enum.reject(&(&1 == ""))
-      |> Enum.map(&String.to_integer/1)
+    ids = params |> Map.get("label_ids", []) |> Todo.Labels.parse_ids()
 
     socket
     |> assign(:selected_label_ids, ids)
