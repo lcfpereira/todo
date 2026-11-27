@@ -6,6 +6,10 @@ defmodule Todo.Tasks.Task do
     field :title, :string
     field :completed, :boolean, default: false
 
+    many_to_many :labels, Todo.Labels.Label,
+      join_through: "task_labels",
+      on_replace: :delete
+
     timestamps(type: :utc_datetime)
   end
 

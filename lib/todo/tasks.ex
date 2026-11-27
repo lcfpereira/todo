@@ -18,7 +18,7 @@ defmodule Todo.Tasks do
 
   """
   def list_tasks do
-    Repo.all(Task)
+    Task |> preload(:labels) |> Repo.all()
   end
 
   @doc """
@@ -35,7 +35,7 @@ defmodule Todo.Tasks do
       ** (Ecto.NoResultsError)
 
   """
-  def get_task!(id), do: Repo.get!(Task, id)
+  def get_task!(id), do: Task |> preload(:labels) |> Repo.get!(id)
 
   @doc """
   Creates a task.
@@ -50,9 +50,7 @@ defmodule Todo.Tasks do
 
   """
   def create_task(attrs) do
-    %Task{}
-    |> Task.changeset(attrs)
-    |> Repo.insert()
+    save_with_labels(%Task{labels: []}, attrs, &Repo.insert/1)
   end
 
   @doc """
@@ -68,9 +66,7 @@ defmodule Todo.Tasks do
 
   """
   def update_task(%Task{} = task, attrs) do
-    task
-    |> Task.changeset(attrs)
-    |> Repo.update()
+    save_with_labels(Repo.preload(task, :labels), attrs, &Repo.update/1)
   end
 
   @doc """
@@ -100,5 +96,30 @@ defmodule Todo.Tasks do
   """
   def change_task(%Task{} = task, attrs \\ %{}) do
     Task.changeset(task, attrs)
+  end
+
+  # Labels are only touched when the params carry "label_ids" or "new_labels"
+  # (the task form). New labels are created inside the same transaction as the
+  # task so an invalid task never leaves orphan labels behind.
+  defp save_with_labels(task, attrs, persist) do
+    Repo.transaction(fn ->
+      changeset = task |> Task.changeset(attrs) |> put_labels(attrs)
+
+      case persist.(changeset) do
+        {:ok, task} -> task
+        {:error, changeset} -> Repo.rollback(changeset)
+      end
+    end)
+  end
+
+  defp put_labels(changeset, attrs) do
+    if Map.has_key?(attrs, "label_ids") or Map.has_key?(attrs, "new_labels") do
+      case Todo.Labels.resolve_labels(attrs) do
+        {:ok, labels} -> Ecto.Changeset.put_assoc(changeset, :labels, labels)
+        {:error, message} -> Ecto.Changeset.add_error(changeset, :new_labels, message)
+      end
+    else
+      changeset
+    end
   end
 end

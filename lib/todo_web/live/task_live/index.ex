@@ -24,7 +24,10 @@ defmodule TodoWeb.TaskLive.Index do
         <:col :let={{_id, task}} label="Done">
           <input type="checkbox" checked={task.completed} phx-click="toggle" phx-value-id={task.id} />
         </:col>
-        <:col :let={{_id, task}} label="Title">{task.title}</:col>
+        <:col :let={{_id, task}} label="Title">
+          {task.title}
+          <TodoWeb.LabelComponents.label_badges id={"task-#{task.id}-labels"} labels={task.labels} />
+        </:col>
         <:col :let={{_id, task}} label="Completed">{task.completed}</:col>
         <:action :let={{_id, task}}>
           <div class="sr-only">

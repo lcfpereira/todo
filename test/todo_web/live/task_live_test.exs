@@ -119,4 +119,56 @@ defmodule TodoWeb.TaskLiveTest do
       assert html =~ "some updated title"
     end
   end
+
+  describe "Labels" do
+    test "creates a task with new and existing labels via the form", %{conn: conn} do
+      {:ok, existing} = Todo.Labels.create_label(%{name: "Work"})
+      {:ok, form_live, _} = live(conn, ~p"/tasks/new")
+
+      assert has_element?(form_live, "#label-picker")
+      assert has_element?(form_live, "#task_label_#{existing.id}")
+
+      form_live
+      |> form("#task-form",
+        task: %{title: "with labels", label_ids: [existing.id], new_labels: "Home, work"}
+      )
+      |> render_submit()
+
+      {:ok, index_live, _} = live(conn, ~p"/tasks")
+      [task] = Todo.Tasks.list_tasks()
+      assert Enum.sort(Enum.map(task.labels, & &1.name)) == ["Home", "Work"]
+      assert has_element?(index_live, "#task-#{task.id}-labels")
+
+      for label <- task.labels,
+          do: assert(has_element?(index_live, "#task-#{task.id}-labels-label-#{label.id}"))
+    end
+
+    test "shows an error for an overlong new label", %{conn: conn} do
+      {:ok, form_live, _} = live(conn, ~p"/tasks/new")
+
+      html =
+        form_live
+        |> form("#task-form", task: %{title: "x", new_labels: String.duplicate("a", 31)})
+        |> render_submit()
+
+      assert html =~ "should be at most 30"
+    end
+
+    test "edit form preselects labels and show page renders badges", %{conn: conn} do
+      {:ok, task} = Todo.Tasks.create_task(%{"title" => "t", "new_labels" => "Alpha"})
+      [label] = task.labels
+
+      {:ok, edit_live, _} = live(conn, ~p"/tasks/#{task}/edit")
+      assert has_element?(edit_live, "#task_label_#{label.id}[checked]")
+
+      {:ok, show_live, _} = live(conn, ~p"/tasks/#{task}")
+      assert has_element?(show_live, "#task-labels-label-#{label.id}")
+    end
+
+    test "tasks without labels render no badge container", %{conn: conn} do
+      task = task_fixture()
+      {:ok, index_live, _} = live(conn, ~p"/tasks")
+      refute has_element?(index_live, "#task-#{task.id}-labels")
+    end
+  end
 end
